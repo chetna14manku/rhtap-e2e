@@ -145,8 +145,8 @@ export const gitLabProviderGitLabCIWithPromotionTests = (softwareTemplateName: s
          */
         it(`Commit updated RHTAP env file for ${softwareTemplateName} and enable ACS scan`, async () => {
             // Update env file for GitLab CI vars
-            await gitLabProvider.updateEnvFileForGitLabCI(gitlabRepositoryID, 'main', await kubeClient.getRekorServerUrl(RHTAPRootNamespace), await kubeClient.getTUFUrl(RHTAPRootNamespace));
-            await gitLabProvider.updateEnvFileForGitLabCI(gitlabRepositoryGitOpsID, 'main', await kubeClient.getRekorServerUrl(RHTAPRootNamespace), await kubeClient.getTUFUrl(RHTAPRootNamespace));
+            await gitLabProvider.updateVariablesForGitLabCI(gitlabRepositoryID, 'main', await kubeClient.getRekorServerUrl(RHTAPRootNamespace), await kubeClient.getTUFUrl(RHTAPRootNamespace), process.env.CI_TEST_RUNNER_IMAGE || '');
+            await gitLabProvider.updateVariablesForGitLabCI(gitlabRepositoryGitOpsID, 'main', await kubeClient.getRekorServerUrl(RHTAPRootNamespace), await kubeClient.getTUFUrl(RHTAPRootNamespace), process.env.CI_TEST_RUNNER_IMAGE || '');
         }, 120000);
 
         /**
@@ -224,7 +224,10 @@ export const gitLabProviderGitLabCIWithPromotionTests = (softwareTemplateName: s
             // const buildahLog: string = await gitLabProvider.getLogForBuildah(gitlabRepositoryID, latestPipeline.id);
             // const sbomVersion = await gitLabProvider.parseSbomVersionFromLog(buildahLog);
             // await checkSBOMInTrustification(kubeClient, sbomVersion);
-            await checkSBOMInTrustification(kubeClient, repositoryName);
+
+            //because of the bug https://issues.redhat.com/browse/TC-2564 we need to use the image path from the file
+            // await checkSBOMInTrustification(kubeClient, repositoryName);
+            await checkSBOMInTrustification(kubeClient, '/tmp/files/image'); //NOSONAR
         }, 900000);
 
         /**

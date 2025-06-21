@@ -550,3 +550,16 @@ export async function parseSbomVersionFromLogs(log: string): Promise<string> {
         return "";
     }
 }
+
+export async function getRunnerImageFromCIFile(fileContent: string): Promise<string> {
+    const pattern = /^\s*image:\s*(.*rhtap-task-runner.*)$/gm;
+    let oldImageValue = '';
+    const match = pattern.exec(fileContent);
+    // Get group value after "image:" pattern
+    if (match) {
+        oldImageValue = match[1];
+        console.log(`Old Image Value: ${oldImageValue}`);
+    }
+
+    return oldImageValue;
+}

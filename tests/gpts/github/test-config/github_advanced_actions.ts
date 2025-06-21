@@ -148,7 +148,7 @@ export const githubActionsSoftwareTemplatesAdvancedScenarios = (gptTemplate: str
             for (const repoData of repoDict) {
                 await setGitHubActionSecrets(gitHubClient, kubeClient, githubOrganization, repoData.repoName);
                 await setGitHubActionVariables(gitHubClient, kubeClient, githubOrganization, repoData.repoName, imageRegistry);
-                expect(await gitHubClient.updateWorkflowFileToEnableSecrets(githubOrganization, repoData.repoName, repoData.workflowPath)).not.toBe(undefined);
+                expect(await gitHubClient.updateWorkflowFileToEnableSecrets(githubOrganization, repoData.repoName, repoData.workflowPath, process.env.CI_TEST_RUNNER_IMAGE || '')).not.toBe(undefined);
             }
 
         }, 600000);
@@ -234,9 +234,12 @@ export const githubActionsSoftwareTemplatesAdvancedScenarios = (gptTemplate: str
          * Verifies if the SBOm is uploaded in RHTPA/Trustification
          */
         it('check sbom uploaded in RHTPA', async () => {
-            const jobLogs = await gitHubClient.getJobLogsFromWorkflowName(githubOrganization, repositoryName, "TSSC-Build-Attest-Scan-Deploy");
-            const sbomVersion = await parseSbomVersionFromLogs(jobLogs);
-            await checkSBOMInTrustification(kubeClient, sbomVersion);
+            // const jobLogs = await gitHubClient.getJobLogsFromWorkflowName(githubOrganization, repositoryName, "TSSC-Build-Attest-Scan-Deploy");
+            // const sbomVersion = await parseSbomVersionFromLogs(jobLogs);
+            // await checkSBOMInTrustification(kubeClient, sbomVersion);
+
+            //because of the bug https://issues.redhat.com/browse/TC-2564 we need to use the image path from the file
+            await checkSBOMInTrustification(kubeClient, '/tmp/files/image'); //NOSONAR
         }, 900000);
 
         /**

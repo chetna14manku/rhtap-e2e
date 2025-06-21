@@ -4,6 +4,7 @@ import { AxiosError } from "axios";
 import { Utils } from "./utils";
 import { generateRandomChars } from "../../utils/generator";
 import sodium from 'sodium-native';
+import { getRunnerImageFromCIFile } from "../../utils/test.utils";
 
 export class GitHubProvider extends Utils {
     private readonly octokit: Octokit;
@@ -844,7 +845,7 @@ export class GitHubProvider extends Utils {
      * @param path Path to the file
      * @returns The content of the file as a string
      */
-    async getFileContent(owner: string, repo: string, path: string): Promise<string> {
+    public async getFileContent(owner: string, repo: string, path: string): Promise<string> {
         try {
             const response = await this.octokit.rest.repos.getContent({
                 owner,
@@ -872,32 +873,42 @@ export class GitHubProvider extends Utils {
      * @param {string} workflowPath - The workflow file name
      * @returns {Promise<string | undefined>} A Promise resolving to "true" if commit successful, otherwise undefined.
     */
-    async updateWorkflowFileToEnableSecrets(githubOrganization: string, repositoryName: string, workflowPath: string) {
+    async updateWorkflowFileToEnableSecrets(githubOrganization: string, repositoryName: string, workflowPath: string, newRunnerImageValue: string) {
+        let fileChanges = [
+            {
+                path: workflowPath,
+                stringToFind: "# REKOR_HOST: ${{ secrets.REKOR_HOST }}",
+                replacementString: "REKOR_HOST: ${{ secrets.REKOR_HOST }}"
+            },
+            {
+                path: workflowPath,
+                stringToFind: "/*REKOR_HOST: `${{ secrets.REKOR_HOST }}`, */",
+                replacementString: "REKOR_HOST: `${{ secrets.REKOR_HOST }}`,"
+            },
+            {
+                path: workflowPath,
+                stringToFind: "# TUF_MIRROR: ${{ secrets.TUF_MIRROR }}",
+                replacementString: "TUF_MIRROR: ${{ secrets.TUF_MIRROR }}"
+            },
+            {
+                path: workflowPath,
+                stringToFind: "/*TUF_MIRROR: `${{ secrets.TUF_MIRROR }}`, */",
+                replacementString: "TUF_MIRROR: `${{ secrets.TUF_MIRROR }}`,"
+            },
+        ];
+        if (newRunnerImageValue) {
+            console.log(`Updating runner image to ${newRunnerImageValue}`);
+            const fileContent = await this.getFileContent(githubOrganization, repositoryName, workflowPath);
+            fileChanges = fileChanges.concat({
+                path: workflowPath,
+                stringToFind: await getRunnerImageFromCIFile(fileContent),
+                replacementString: newRunnerImageValue
+            });
+        }
         return await this.commitMultipleFilesInGitHub(
             githubOrganization,
             repositoryName,
-            [
-                {
-                    path: workflowPath,
-                    stringToFind: "# REKOR_HOST: ${{ secrets.REKOR_HOST }}",
-                    replacementString: "REKOR_HOST: ${{ secrets.REKOR_HOST }}"
-                },
-                {
-                    path: workflowPath,
-                    stringToFind: "/*REKOR_HOST: `${{ secrets.REKOR_HOST }}`, */",
-                    replacementString: "REKOR_HOST: `${{ secrets.REKOR_HOST }}`,"
-                },
-                {
-                    path: workflowPath,
-                    stringToFind: "# TUF_MIRROR: ${{ secrets.TUF_MIRROR }}",
-                    replacementString: "TUF_MIRROR: ${{ secrets.TUF_MIRROR }}"
-                },
-                {
-                    path: workflowPath,
-                    stringToFind: "/*TUF_MIRROR: `${{ secrets.TUF_MIRROR }}`, */",
-                    replacementString: "TUF_MIRROR: `${{ secrets.TUF_MIRROR }}`,"
-                }
-            ],
+            fileChanges,
             "Update Workflow file for Rekor host and TUF mirror secrets"
         );
     }

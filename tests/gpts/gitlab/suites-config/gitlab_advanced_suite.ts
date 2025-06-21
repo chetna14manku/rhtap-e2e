@@ -260,8 +260,11 @@ export const gitLabSoftwareTemplatesAdvancedScenarios = (softwareTemplateName: s
         * Verifies if the SBOm is uploaded in RHTPA/Trustification
         */
         it('check sbom uploaded in RHTPA', async () => {
-            const extractedBuildImage = await gitLabProvider.getImageToPromotion(gitlabGitopsRepositoryID, "main", repositoryName, productionEnvironmentName);
-            await checkSBOMInTrustification(kubeClient, extractedBuildImage.split(":")[2]);
+            // const extractedBuildImage = await gitLabProvider.getImageToPromotion(gitlabGitopsRepositoryID, "main", repositoryName, productionEnvironmentName);
+            // await checkSBOMInTrustification(kubeClient, extractedBuildImage.split(":")[2]);
+
+            //because of the bug https://issues.redhat.com/browse/TC-2564 we need to use the image path from the file
+            await checkSBOMInTrustification(kubeClient, '/tmp/files/image'); //NOSONAR
         }, 900000);
 
         /**

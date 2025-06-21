@@ -119,7 +119,7 @@ export const gitLabProviderGitLabCITests = (softwareTemplateName: string, string
          */
         it(`Commit updated RHTAP env file for ${softwareTemplateName} and enable ACS scan`, async () => {
             // Update env file for GitLab CI vars
-            await gitLabProvider.updateEnvFileForGitLabCI(gitlabRepositoryID, 'main', await kubeClient.getRekorServerUrl(RHTAPRootNamespace), await kubeClient.getTUFUrl(RHTAPRootNamespace));
+            await gitLabProvider.updateVariablesForGitLabCI(gitlabRepositoryID, 'main', await kubeClient.getRekorServerUrl(RHTAPRootNamespace), await kubeClient.getTUFUrl(RHTAPRootNamespace), process.env.CI_TEST_RUNNER_IMAGE || '');
         }, 120000);
 
         /**

@@ -121,8 +121,7 @@ export const gitHubActionsBasicGoldenPathTemplateTests = (gptTemplate: string, s
         it (`creates env variables in repo`, async () => {
             await setGitHubActionSecrets(gitHubClient, kubeClient, githubOrganization, repositoryName);
             await setGitHubActionVariables(gitHubClient, kubeClient, githubOrganization, repositoryName, imageRegistry);
-            expect(await gitHubClient.updateWorkflowFileToEnableSecrets(githubOrganization, repositoryName, '.github/workflows/build-and-update-gitops.yml')).not.toBe(undefined);
-        }, 600000);
+            expect(await gitHubClient.updateWorkflowFileToEnableSecrets(githubOrganization, repositoryName, '.github/workflows/build-and-update-gitops.yml', process.env.CI_TEST_RUNNER_IMAGE || '')).not.toBe(undefined);        }, 600000);
 
         /**
          * Trigger and wait for Actions job to finish

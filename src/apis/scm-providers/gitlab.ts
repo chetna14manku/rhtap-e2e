@@ -1,6 +1,7 @@
-import { Gitlab, ProjectHookSchema } from "@gitbeaker/rest";
+import { CommitAction, Gitlab, ProjectHookSchema } from "@gitbeaker/rest";
 import { Utils } from "./utils";
 import { AxiosError } from "axios";
+import { getRunnerImageFromCIFile } from "../../utils/test.utils";
 
 
 export class GitLabProvider extends Utils {
@@ -461,7 +462,7 @@ export class GitLabProvider extends Utils {
         return await this.commitReplacementStringInFile(repositoryID, branchName, 'rhtap/env.sh', 'Update TUF Mirror', `http://tuf.tssc-tas.svc`, tufMirror);
     }
 
-    public async updateEnvFileForGitLabCI(repositoryID: number, branchName: string, rekorHost: string, tufMirror: string): Promise<boolean> {
+    public async updateEnvFileForGitLabCI(repositoryID: number, branchName: string, rekorHost: string, tufMirror: string): Promise<string> {
         const filePath = 'rhtap/env.sh';
         const fileContent = await this.getFileContentAsString(repositoryID, branchName, filePath);
         // Replace ACS
@@ -470,10 +471,54 @@ export class GitLabProvider extends Utils {
         updatedContent = updatedContent.replace(`http://rekor-server.tssc-tas.svc`, rekorHost);
         // Replace TUF
         updatedContent = updatedContent.replace(`http://tuf.tssc-tas.svc`, tufMirror);
-        //Commit changed file
-        return await this.commitFileContent(repositoryID, branchName, filePath, "Update env file for GitLabCI", updatedContent);
+        // Return updatedContent
+        return updatedContent;
+
     }
 
+    /**
+     * Get updated CI File content with new runner image
+     * @param {number} repositoryID - The ID number of gitlab repo.
+     * @param {string} branchName - The branch of the gitlab repo
+     * @param {string} filePath the CI file path in the repo
+     * @param {string} newImageValue the new runner image to replace the existing
+     */
+    public async updateCIRunnerImage(repositoryID: number, branchName: string, newImageValue: string): Promise<string> {
+        const filePath = '.gitlab-ci.yml';
+        const fileContent = await this.getFileContentAsString(repositoryID, branchName, filePath);
+        const oldImageValue = await getRunnerImageFromCIFile(fileContent);
+        return fileContent.replace(oldImageValue, newImageValue);
+    }
+
+    public async updateVariablesForGitLabCI(repositoryID: number, branchName: string, rekorHost: string, tufMirror: string, newRunnerImageValue: string) {
+        try {
+            let commitActions: CommitAction[] = [{
+                action: 'update',
+                filePath: 'rhtap/env.sh',
+                content: await this.updateEnvFileForGitLabCI(repositoryID, branchName, rekorHost, tufMirror),
+                encoding: 'text'
+            }];
+            if (newRunnerImageValue) {
+                console.log(`Updating runner image to ${newRunnerImageValue}`);
+                commitActions = commitActions.concat({
+                    action: 'update',
+                    filePath: '.gitlab-ci.yml',
+                    content: await this.updateCIRunnerImage(repositoryID, branchName, newRunnerImageValue),
+                    encoding: 'text'
+                });
+            }
+            await this.gitlab.Commits.create(
+                repositoryID,
+                branchName,
+                'Update Variables for Gitlab CI',
+                commitActions,
+            );
+
+        } catch (error) {
+            console.log(error);
+            throw new Error("Failed to create commit in Gitlab. Check bellow error");
+        }
+    }
 
     public async commitReplacementStringInFile(repositoryID: number, branchName: string, filePath: string, commitMessage: string, textToReplace: string, replacement: string): Promise<boolean> {
         try {
